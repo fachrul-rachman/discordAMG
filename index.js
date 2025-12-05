@@ -8,7 +8,7 @@ const {
   ALLOWED_ROLE_IDS,
   WEBHOOK_CHAT_URL,
   DM_CHECK_GUILD_ID,
-  N8N_TIMEOUT_MS = 60000,
+  N8N_TIMEOUT_MS = 600000,
   LOG_LEVEL = 'info',
   ALLOWED_CHAT_CHANNELS = ''
 } = process.env;
@@ -23,9 +23,7 @@ const WEBHOOK_CHAT = WEBHOOK_CHAT_URL;
 const DM_GUILD_ID = DM_CHECK_GUILD_ID;
 const N8N_TIMEOUT = Number(N8N_TIMEOUT_MS) || 60000;
 
-// ----------------- NEW: parse allowed channels (whitelist) -----------------
-// If empty => allow all channels (legacy behavior). If set, bot will be silent
-// (no fetch, no logs, no processing) for guild channels not in this set.
+// ----------------- parse allowed channels (whitelist) -----------------
 const allowedChatChannelIds = (ALLOWED_CHAT_CHANNELS || '')
   .split(',')
   .map(s => s.trim())
@@ -184,7 +182,6 @@ function splitIntoChunks(text, maxLen = 2000) {
   const chunks = [];
   let remaining = text;
   while (remaining.length > maxLen) {
-    // try to cut at newline or space for nicer split
     let idx = remaining.lastIndexOf('\n', maxLen);
     if (idx === -1) idx = remaining.lastIndexOf(' ', maxLen);
     if (idx === -1) idx = maxLen;
@@ -310,14 +307,12 @@ client.on('messageCreate', async (message) => {
   try {
     if (message.author?.bot) return;
 
-    // ----------------- NEW: whitelist check (silent ignore) -----------------
-    // If we have a whitelist and this is a guild message, ignore messages from channels not in the whitelist.
+    // ----------------- whitelist check (silent ignore) -----------------
     if (message.guild && allowedChatChannelsSet.size > 0 && !allowedChatChannelsSet.has(message.channel.id)) {
       return; // silent: do nothing (no logs, no fetch)
     }
     // ----------------------------------------------------------------------
 
-    // Determine mention/reply only after channel whitelist check to avoid unnecessary fetches.
     let isMention = false;
     let isReply = false;
     if (message.mentions && client.user && message.mentions.has(client.user.id)) isMention = true;
@@ -351,7 +346,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
 
     // ----------------- NEW: whitelist check for edits (silent ignore) -----------------
     if (newMessage.guild && allowedChatChannelsSet.size > 0 && !allowedChatChannelsSet.has(newMessage.channel.id)) {
-      return; // silent: ignore edits in channels not allowed
+      return;
     }
     // -------------------------------------------------------------------------
 
